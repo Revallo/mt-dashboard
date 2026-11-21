@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rule A · paper trading</title>
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink2: #52514e; --muted: #898781;
+  --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,.10);
+  --series: #2a78d6; --accent: #eb6834; --up: #006300; --down: #d03b3b; --wash: rgba(11,11,11,.04);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,.10);
+    --series: #3987e5; --accent: #d95926; --up: #0ca30c; --down: #e66767; --wash: rgba(255,255,255,.05);
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink);
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 1120px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: 20px; margin: 0; }
+h2 { font-size: 15px; margin: 0 0 10px; }
+.sub { color: var(--ink2); font-size: 13px; }
+.top { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: flex-end; justify-content: space-between; margin-bottom: 14px; }
+.price { font-size: 34px; font-weight: 650; letter-spacing: -.01em; line-height: 1.1; }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border: 1px solid var(--border);
+  border-radius: 999px; font-size: 12.5px; color: var(--ink2); background: var(--surface); }
+.banner { border: 1px solid var(--border); background: var(--surface); border-radius: 10px; padding: 10px 14px;
+  margin-bottom: 14px; font-size: 13.5px; color: var(--ink2); }
+.banner b { color: var(--ink); }
+.banner code { background: var(--wash); padding: 1px 6px; border-radius: 5px; font-size: 12.5px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr)); gap: 12px; margin-bottom: 14px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+.card .name { font-weight: 600; }
+.cards.single { grid-template-columns: minmax(0, 560px); }
+.card.main { border: 2px solid var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 12%, transparent); }
+.tag { display: inline-block; font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+  padding: 3px 10px; border-radius: 6px; margin-bottom: 8px; }
+.tag.main { background: var(--accent); color: #fff; }
+.tag.test { background: var(--wash); color: var(--ink2); border: 1px solid var(--border); }
+.why { font-size: 13.5px; color: var(--ink2); margin-top: 4px; }
+.card.main .name { font-size: 17px; }
+.rules { margin-bottom: 14px; }
+.rules h2 { font-size: 18px; margin-bottom: 8px; }
+.rules ol { margin: 0; padding-left: 22px; font-size: 15.5px; line-height: 1.6; color: var(--ink); }
+.rules li + li { margin-top: 4px; }
+.rules b { color: var(--ink); }
+.rules .note { margin-top: 10px; font-size: 14px; color: var(--ink2); }
+.card .eq { font-size: 26px; font-weight: 650; margin-top: 6px; line-height: 1.15; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; margin-top: 10px; font-size: 13.5px; }
+.kv dt { color: var(--ink2); } .kv dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+.up { color: var(--up); } .down { color: var(--down); }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.seg button { font: inherit; font-size: 13px; padding: 5px 12px; border: 0; background: transparent; color: var(--ink2); cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--border); }
+.seg button[aria-pressed="true"] { background: var(--wash); color: var(--ink); font-weight: 600; }
+.seg button:focus-visible { outline: 2px solid var(--series); outline-offset: -2px; }
+.chartwrap { position: relative; overflow-x: auto; }
+svg { display: block; width: 100%; min-width: 640px; height: auto; }
+svg text { font: 11.5px system-ui, -apple-system, "Segoe UI", sans-serif; fill: var(--muted); }
+.tip { position: absolute; pointer-events: none; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 6px 10px; font-size: 12.5px; box-shadow: 0 4px 14px rgba(0,0,0,.12); white-space: nowrap; display: none; }
+.tip b { display: block; font-size: 14px; }
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+th, td { text-align: right; padding: 6px 10px; border-bottom: 1px solid var(--grid); font-variant-numeric: tabular-nums; white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+th { color: var(--ink2); font-weight: 500; }
+tr.future td { color: var(--muted); }
+.empty { color: var(--muted); font-size: 13.5px; padding: 6px 0; }
+.grid2 { display: grid; gap: 12px; margin-top: 12px; }
+.fading { opacity: .55; transition: opacity .2s; }
+footer { color: var(--muted); font-size: 12.5px; margin-top: 18px; }
+</style>
+</head>
+<body>
+<main id="app">
+  <div class="top">
+    <div>
+      <h1>Rule A · paper trading</h1>
+      <div class="sub">BTCUSDT perpetual breakout · simulation with real prices, virtual money · not investment advice</div>
+    </div>
+    <div style="text-align:right">
+      <div class="price" id="price">–</div>
+      <div class="sub"><span class="pill" id="bot">loading…</span> <span id="updated"></span></div>
+    </div>
+  </div>
+  <div class="banner" id="banner" hidden></div>
+  <div class="card rules" id="rules" hidden>
+    <h2>How the strategy works</h2>
+    <ol id="rulelist"></ol>
+    <div class="note" id="rulenote"></div>
+  </div>
+  <div class="cards" id="cards"></div>
+
+  <div class="card">
+    <div class="row">
+      <h2 style="margin:0 8px 0 0">Price and bands this session</h2>
+      <div class="seg" id="hours" role="group" aria-label="Session start hour"></div>
+    </div>
+    <div class="sub" id="chartsub" style="margin-bottom:6px"></div>
+    <div class="chartwrap"><svg id="chart" viewBox="0 0 1000 400" role="img" aria-label="BTC price and bands"></svg><div class="tip" id="tip"></div></div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <h2>Checks this session</h2>
+      <div class="tablewrap"><table id="checks"></table></div>
+    </div>
+    <div class="card">
+      <h2>Closed trades</h2>
+      <div class="tablewrap"><table id="trades"></table></div>
+      <div class="empty" id="notrades" hidden>No closed trades yet. The average is only about 6 trades per month.</div>
+    </div>
+  </div>
+  <footer id="foot"></footer>
+</main>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const NS = "http://www.w3.org/2000/svg";
+const nf0 = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
+const nf2 = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const tHM = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false });
+const tDHM = new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false });
+const tUTC = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "UTC" });
+const usd = v => "$" + nf0.format(v);
+const pct = v => (v > 0 ? "+" : v < 0 ? "−" : "") + nf2.format(Math.abs(v)) + "%";
+const sideName = s => s > 0 ? "▲ LONG" : s < 0 ? "▼ SHORT" : "– no position";
+let data = null, selHour = null;
+// Which variant is the live candidate; the others are side-by-side experiments.
+const MAIN = "h11_tp6";
+// false = the page shows only the current strategy. The bot still runs and records every variant;
+// set to true to show the test variants again.
+const SHOW_TESTS = false;
+function view(d) {
+  if (SHOW_TESTS || !d.variants) return d;
+  const main = d.variants.filter(v => v.name === MAIN);
+  if (!main.length) return d;
+  return Object.assign({}, d, { variants: main, trades: (d.trades || []).filter(t => t.variant === MAIN) });
+}
+const WHY = {
+  h11: "Same as the current strategy but without take-profit. Tests whether the 6% take-profit helps.",
+  h10_tp6: "Same as the current strategy but the session starts 1 hour earlier. Tests whether the result depends on the exact start time.",
+};
+
+function el(tag, attrs, text) {
+  const e = document.createElement(tag);
+  if (attrs) for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+function svg(tag, attrs, text) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+function countdown(iso) {
+  const s = Math.max(0, (new Date(iso) - Date.now()) / 1000);
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+  return h ? `in ${h} h ${m} m` : `in ${m} m`;
+}
+function signed(span, v, text) {
+  span.textContent = text;
+  span.className = v > 0 ? "up" : v < 0 ? "down" : "";
+  return span;
+}
+
+function renderTop(d) {
+  $("price").textContent = usd(d.price);
+  const bot = $("bot"), b = d.bot;
+  bot.textContent = b.running ? "● bot running" : b.has_ledger ? "○ bot not running" : "○ bot has never run here";
+  $("updated").textContent = "updated " + tHM.format(new Date(d.generated));
+  const ban = $("banner");
+  ban.hidden = b.running;
+  if (!b.running) {
+    ban.replaceChildren();
+    ban.append(el("b", null, b.has_ledger ? "The bot is not running on this machine. " : "No bot data on this machine yet. "),
+      "The price and bands below are still current, but positions and equity only change while the bot runs. To start it here, open a second terminal in the project folder: ",
+      el("code", null, "python -m mt paper-nb"));
+  }
+}
+
+function renderCards(d) {
+  const box = $("cards");
+  box.replaceChildren();
+  for (const v of d.variants) {
+    const main = v.name === MAIN;
+    const c = el("div", { class: main ? "card main" : "card" });
+    c.append(el("div", { class: main ? "tag main" : "tag test" }, main ? "★ Current strategy" : "Just testing"));
+    c.append(el("div", { class: "name" }, v.label));
+    if (!main && WHY[v.name]) c.append(el("div", { class: "why" }, WHY[v.name]));
+    c.append(el("div", { class: "sub" }, `${v.name} · starts ${String(v.start_hour).padStart(2, "0")}:00 UTC · ` +
+      (v.take_profit ? `TP ${nf0.format(v.take_profit * 100)}%` : "no TP")));
+    const eq = el("div", { class: "eq" }, usd(v.equity) + " ");
+    const r = el("span", { style: "font-size:15px;font-weight:600" });
+    eq.append(signed(r, v.return_pct, pct(v.return_pct)));
+    c.append(eq);
+    const kv = el("dl", { class: "kv" });
+    const add = (k, node) => { kv.append(el("dt", null, k)); const dd = el("dd"); dd.append(node); kv.append(dd); };
+    const p = v.position;
+    add("Position", p ? sideName(p.side) : v.blocked ? "– waiting for the next breakout" : sideName(0));
+    if (p) {
+      add("Entry price", usd(p.entry_px));
+      if (p.tp_px) add("Take-profit at", usd(p.tp_px));
+      add("Unrealized P&L", signed(el("span"), p.unrealized, `${p.unrealized >= 0 ? "+" : "−"}$${nf2.format(Math.abs(p.unrealized))} (${pct(p.unrealized_pct)})`));
+    }
+    const nxt = v.checks.find(x => !x.done);
+    if (nxt) {
+      add(nxt.last ? "Session closes" : "Next check", `${tHM.format(new Date(nxt.time))} · ${countdown(nxt.time)}`);
+      if (!nxt.last) {
+        add("Long if close is above", `${usd(nxt.upper)} (${pct(100 * (nxt.upper / d.price - 1))})`);
+        add("Short if close is below", `${usd(nxt.lower)} (${pct(100 * (nxt.lower / d.price - 1))})`);
+      }
+    }
+    c.append(kv);
+    box.append(c);
+  }
+}
+
+function renderHours(d) {
+  const hours = [...new Set(d.variants.map(v => v.start_hour))].sort((a, b) => b - a);
+  if (selHour === null || !hours.includes(selHour)) selHour = hours[0];
+  const box = $("hours");
+  box.replaceChildren();
+  for (const h of hours) {
+    const b = el("button", { type: "button", "aria-pressed": String(h === selHour) }, `Session from ${String(h).padStart(2, "0")}:00 UTC`);
+    b.onclick = () => { selHour = h; render(); };
+    box.append(b);
+  }
+}
+
+function renderChecks(v) {
+  const t = $("checks");
+  t.replaceChildren();
+  const head = el("tr");
+  for (const h of ["Time", "Lower band", "Upper band", "Close", "Result"]) head.append(el("th", null, h));
+  t.append(head);
+  for (const c of v.checks) {
+    const tr = el("tr", c.done ? null : { class: "future" });
+    const when = new Date(c.time);
+    tr.append(el("td", null, `${tHM.format(when)} (${tUTC.format(when)} UTC)`));
+    if (c.last) {
+      tr.append(el("td", null, "–"), el("td", null, "–"), el("td", null, "–"), el("td", null, "all positions closed"));
+    } else {
+      tr.append(el("td", null, usd(c.lower)), el("td", null, usd(c.upper)), el("td", null, c.done ? usd(c.close) : "–"),
+        el("td", null, c.done ? (c.pos > 0 ? "▲ long" : c.pos < 0 ? "▼ short" : "inside the band") : "pending"));
+    }
+    t.append(tr);
+  }
+}
+
+function renderTrades(d) {
+  const t = $("trades");
+  t.replaceChildren();
+  $("notrades").hidden = d.trades.length > 0;
+  if (!d.trades.length) return;
+  const head = el("tr");
+  for (const h of ["Exit time", "Variant", "Side", "Entry", "Exit", "Reason", "P&L", "Equity"]) head.append(el("th", null, h));
+  t.append(head);
+  const why = { take_profit: "take-profit", session_end: "session end", flip: "reversal", exit: "exit" };
+  for (const r of [...d.trades].reverse()) {
+    const tr = el("tr");
+    const pnl = el("td");
+    signed(pnl, r.pnl, `${r.pnl >= 0 ? "+" : "−"}$${nf2.format(Math.abs(r.pnl))}`);
+    tr.append(el("td", null, tDHM.format(new Date(r.exit_time))), el("td", null, r.variant),
+      el("td", null, r.side > 0 ? "▲ long" : "▼ short"), el("td", null, usd(r.entry_px)), el("td", null, usd(r.exit_px)),
+      el("td", null, why[r.reason] || r.reason), pnl, el("td", null, usd(r.equity)));
+    t.append(tr);
+  }
+}
+
+function renderChart(d, v) {
+  const s = $("chart"), W = 1000, H = 400, L = 66, R = 78, T = 14, B = 30;
+  s.replaceChildren();
+  const now = new Date(d.generated).getTime();
+  const t0 = new Date(v.session_start).getTime() - 6 * 3600e3, t1 = new Date(v.session_end).getTime();
+  const pts = d.price_series.filter(p => p[0] >= t0).concat([[now, d.price]]);
+  const bandChecks = v.checks.filter(c => !c.last);
+  const ys = pts.map(p => p[1]).concat(bandChecks.flatMap(c => [c.upper, c.lower]), [v.session_open]);
+  const pos = v.position;
+  if (pos) { ys.push(pos.entry_px); if (pos.tp_px) ys.push(pos.tp_px); }
+  let y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const pad = (y1 - y0) * 0.07 || 1; y0 -= pad; y1 += pad;
+  const X = t => L + (t - t0) / (t1 - t0) * (W - L - R), Y = p => T + (y1 - p) / (y1 - y0) * (H - T - B);
+  const css = n => `var(--${n})`;
+
+  const step = [50, 100, 200, 250, 500, 1000, 2000, 2500, 5000, 10000].find(k => (y1 - y0) / k <= 6) || 20000;
+  for (let p = Math.ceil(y0 / step) * step; p <= y1; p += step) {
+    s.append(svg("line", { x1: L, x2: W - R, y1: Y(p), y2: Y(p), stroke: css("grid"), "stroke-width": 1 }));
+    s.append(svg("text", { x: L - 8, y: Y(p) + 4, "text-anchor": "end" }, nf0.format(p)));
+  }
+  s.append(svg("line", { x1: L, x2: W - R, y1: H - B, y2: H - B, stroke: css("axis"), "stroke-width": 1 }));
+  for (const t of [new Date(v.session_start).getTime(), ...v.checks.map(c => new Date(c.time).getTime())]) {
+    s.append(svg("line", { x1: X(t), x2: X(t), y1: T, y2: H - B, stroke: css("grid"), "stroke-width": 1 }));
+    s.append(svg("text", { x: X(t), y: H - B + 17, "text-anchor": "middle" }, tHM.format(new Date(t))));
+  }
+  // session open
+  s.append(svg("line", { x1: X(new Date(v.session_start).getTime()), x2: W - R, y1: Y(v.session_open), y2: Y(v.session_open),
+    stroke: css("axis"), "stroke-width": 1.5, "stroke-dasharray": "5 4" }));
+  s.append(svg("text", { x: W - R + 6, y: Y(v.session_open) + 4 }, "session open"));
+  // bands: one tick per check, labelled once
+  const half = (W - L - R) * 0.022;
+  bandChecks.forEach((c, i) => {
+    const x = X(new Date(c.time).getTime());
+    for (const k of ["upper", "lower"]) {
+      s.append(svg("line", { x1: x - half, x2: x + half, y1: Y(c[k]), y2: Y(c[k]), stroke: css("ink2"), "stroke-width": 3,
+        "stroke-linecap": "round", opacity: c.done ? 0.45 : 1 }));
+    }
+    if (i === bandChecks.length - 1) {
+      s.append(svg("text", { x: x + half + 6, y: Y(c.upper) + 4 }, "upper band"));
+      s.append(svg("text", { x: x + half + 6, y: Y(c.lower) + 4 }, "lower band"));
+    }
+  });
+  // open position: entry and take-profit levels
+  if (pos) {
+    const xe = Math.max(L, X(new Date(pos.entry_time).getTime()));
+    s.append(svg("line", { x1: xe, x2: W - R, y1: Y(pos.entry_px), y2: Y(pos.entry_px), stroke: css("accent"), "stroke-width": 1.5 }));
+    s.append(svg("circle", { cx: xe, cy: Y(pos.entry_px), r: 5, fill: css("accent"), stroke: css("surface"), "stroke-width": 2 }));
+    s.append(svg("text", { x: xe + 8, y: Y(pos.entry_px) - 7 }, (pos.side > 0 ? "long entry " : "short entry ") + nf0.format(pos.entry_px)));
+    if (pos.tp_px) {
+      s.append(svg("line", { x1: xe, x2: W - R, y1: Y(pos.tp_px), y2: Y(pos.tp_px), stroke: css("accent"), "stroke-width": 1.5, "stroke-dasharray": "2 4" }));
+      s.append(svg("text", { x: xe + 8, y: Y(pos.tp_px) - 7 }, "take-profit " + nf0.format(pos.tp_px)));
+    }
+  }
+  // price
+  s.append(svg("path", { d: pts.map((p, i) => (i ? "L" : "M") + X(p[0]).toFixed(1) + " " + Y(p[1]).toFixed(1)).join(""),
+    fill: "none", stroke: css("series"), "stroke-width": 2, "stroke-linejoin": "round" }));
+  const lx = X(now), ly = Y(d.price);
+  s.append(svg("circle", { cx: lx, cy: ly, r: 4.5, fill: css("series"), stroke: css("surface"), "stroke-width": 2 }));
+  const lab = svg("text", { x: lx + 9, y: ly + 4, style: "fill:var(--ink);font-weight:600;font-size:12.5px" }, nf0.format(d.price));
+  s.append(lab);
+  // hover layer: crosshair snaps to the nearest price point
+  const cross = svg("line", { y1: T, y2: H - B, stroke: css("muted"), "stroke-width": 1, visibility: "hidden" });
+  const dot = svg("circle", { r: 4.5, fill: css("series"), stroke: css("surface"), "stroke-width": 2, visibility: "hidden" });
+  const hit = svg("rect", { x: L, y: T, width: W - L - R, height: H - T - B, fill: "transparent" });
+  s.append(cross, dot, hit);
+  const tip = $("tip");
+  const hide = () => { cross.setAttribute("visibility", "hidden"); dot.setAttribute("visibility", "hidden"); tip.style.display = "none"; };
+  hit.addEventListener("pointerleave", hide);
+  hit.addEventListener("pointermove", ev => {
+    const box = s.getBoundingClientRect(), k = W / box.width;
+    const t = t0 + ((ev.clientX - box.left) * k - L) / (W - L - R) * (t1 - t0);
+    let lo = 0, hi = pts.length - 1;
+    while (hi - lo > 1) { const m = (lo + hi) >> 1; if (pts[m][0] < t) lo = m; else hi = m; }
+    const p = Math.abs(pts[lo][0] - t) < Math.abs(pts[hi][0] - t) ? pts[lo] : pts[hi];
+    const x = X(p[0]), y = Y(p[1]);
+    cross.setAttribute("x1", x); cross.setAttribute("x2", x); cross.setAttribute("visibility", "visible");
+    dot.setAttribute("cx", x); dot.setAttribute("cy", y); dot.setAttribute("visibility", "visible");
+    tip.replaceChildren(el("b", null, usd(p[1])), `${tDHM.format(new Date(p[0]))} · ${pct(100 * (p[1] / v.session_open - 1))} from open`);
+    tip.style.display = "block";
+    const px = x / k, left = px + 14 + tip.offsetWidth > box.width ? px - 14 - tip.offsetWidth : px + 14;
+    tip.style.left = left + "px"; tip.style.top = Math.max(0, y / k - 44) + "px";
+  });
+  $("chartsub").textContent = `Session ${tDHM.format(new Date(v.session_start))} to ${tDHM.format(new Date(v.session_end))} (your local time). ` +
+    "Bands only apply at check times; each short grey line is the level at one check.";
+}
+
+function render() {
+  if (!data || !data.variants) return;
+  const d = view(data);
+  $("cards").classList.toggle("single", d.variants.length === 1);
+  $("hours").style.display = d.variants.length === 1 ? "none" : "";
+  renderTop(d); renderCards(d); renderHours(d);
+  const v = d.variants.find(x => x.start_hour === selHour && x.take_profit) || d.variants.find(x => x.start_hour === selHour);
+  renderChart(d, v); renderChecks(v); renderTrades(d);
+  renderRules(d);
+  $("foot").textContent = "This page is read-only; it cannot open or close positions. Simulation with real prices and virtual money, not investment advice.";
+}
+
+function renderRules(d) {
+  const p = d.params, m = d.variants.find(x => x.name === MAIN) || d.variants[0];
+  const hh = String(m.start_hour).padStart(2, "0") + ":00 UTC";
+  const B = t => el("b", null, t);
+  const li = (...parts) => { const x = el("li"); x.append(...parts); return x; };
+  const steps = [
+    li("A new trading session starts every day at ", B(hh), " and lasts 24 hours. The price at that moment is the ", B("session open"), "."),
+    li("Two bands are drawn around the open: ", B(`open ± ${nf0.format(p.band_mult)} × the average price move`),
+       ` over the last ${p.lookback} sessions. Inside the bands is treated as normal noise.`),
+    li("Every ", B(`${p.freq / 60} hours`), " the bot looks at the closing price: ", B("above the upper band → buy (LONG)"),
+       ", ", B("below the lower band → sell (SHORT)"), ", inside the bands → keep the current position."),
+    li("If the price breaks the opposite band, the position ", B("flips"), " to the other side."),
+  ];
+  if (m.take_profit) steps.push(li(B(`Take-profit ${nf0.format(m.take_profit * 100)}%`),
+    ": once the trade gains that much, it closes and does not re-enter the same direction in that session."));
+  steps.push(li("Every position is ", B("closed when the session ends"), " (no trades held overnight into a new session)."));
+  $("rulelist").replaceChildren(...steps);
+  $("rulenote").textContent = `Costs are always included: fee ${nf2.format(p.taker_fee * 100)}% + slippage ${nf2.format(p.slippage * 100)}% per side + funding. ` +
+    "No leverage: each trade uses at most 1× the account equity.";
+  $("rules").hidden = false;
+}
+
+async function load() {
+  const app = $("app");
+  try {
+    const r = await fetch("status.json?t=" + Date.now(), { cache: "no-store" });
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    data = d;
+    app.classList.remove("fading");
+    render();
+  } catch (e) {
+    app.classList.add("fading");
+    const ban = $("banner");
+    ban.hidden = false;
+    ban.replaceChildren(el("b", null, "Could not load the latest data. "), String(e.message || e), " Retrying automatically.");
+  }
+}
+load();
+setInterval(load, 15000);
+setInterval(() => { if (data && data.variants) renderCards(view(data)); }, 30000);
+</script>
+</body>
+</html>
